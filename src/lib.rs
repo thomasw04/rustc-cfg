@@ -30,8 +30,7 @@
 #[macro_use]
 extern crate thiserror;
 
-use std::env;
-use std::process::Command;
+use std::{env, process::Command};
 
 /// The result of parsing the output of `rustc --print cfg`
 #[cfg_attr(test, derive(Debug))]
@@ -93,11 +92,13 @@ impl Cfg {
     /// a package's manifest (Cargo.toml).
     pub fn of(target: &str) -> Result<Cfg, Error> {
         // NOTE Cargo passes RUSTC to build scripts, prefer that over plain `rustc`.
-        let output = Command::new(env::var("RUSTC").as_ref().map(|s| &**s).unwrap_or("rustc"))
-            .arg("--target")
-            .arg(target)
-            .args(&["--print", "cfg"])
-            .output()?;
+        let mut output = Command::new(env::var("RUSTC").as_ref().map(|s| &**s).unwrap_or("rustc"));
+
+        if target != "host-tuple" {
+            output.arg("--target").arg(target);
+        }
+
+        let output = output.args(&["--print", "cfg"]).output()?;
 
         if !output.status.success() {
             return Err(Error::Rustc(
